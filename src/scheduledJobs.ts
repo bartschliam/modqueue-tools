@@ -1,5 +1,4 @@
 import { JSONObject, ScheduledJobEvent, TriggerContext } from "@devvit/public-api";
-import { getSubredditName } from "./utility.js";
 import { QueuedItemProperties } from "./handleActions.js";
 import { compact } from "lodash";
 import { FILTERED_ITEM_KEY, recordQueueLength } from "./redisHelper.js";
@@ -7,8 +6,8 @@ import { checkAlerting } from "./alerting.js";
 import { refreshWikiPage } from "./analyticsWikiPage.js";
 import { aggregateOlderData } from "./aggregator.js";
 
-export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
-    const subredditName = await getSubredditName(context);
+export async function analyseQueue (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
+    const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
     // Get current mod queue
     const modQueue = await context.reddit.getModQueue({
@@ -35,9 +34,7 @@ export async function analyseQueue (_event: ScheduledJobEvent<JSONObject | undef
 
     const queueItemProps = compact(modQueue.map(queueItem => potentiallyQueuedItems[queueItem.id])).map(item => JSON.parse(item) as QueuedItemProperties);
 
-    if (modQueue.length > 0) {
-        await checkAlerting(modQueue, queueItemProps, context);
-    }
+    await checkAlerting(modQueue, queueItemProps, context);
 }
 
 export async function buildAnalytics (_: ScheduledJobEvent<JSONObject | undefined>, context: TriggerContext) {
