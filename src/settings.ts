@@ -6,6 +6,7 @@ export enum AppSetting {
     AlertAgeHours = "alertAgeHours",
     AlertThresholdForIndividualPosts = "alertThresholdForIndividualPosts",
     DiscordWebhook = "discordWebhook",
+    DiscordWebhookConfig = "discordWebhookConfig",
     UnderThresholdAction = "underThresholdAction",
     RoleToPing = "roleToPing",
 }
@@ -76,6 +77,40 @@ export const appSettings: SettingsFormField[] = [
                         for (const url of urls) {
                             if (!webhookRegex.test(url.trim())) {
                                 return "Please enter valid Discord webhook URLs";
+                            }
+                        }
+                    }
+                },
+            },
+            {
+                name: AppSetting.DiscordWebhookConfig,
+                type: "string",
+                label: "Per-webhook thresholds (optional)",
+                helpText: "Set different thresholds for specific webhooks. Format: one per line as 'WEBHOOK_URL|threshold:NUMBER|ageHours:NUMBER'. Leave blank to use default thresholds for all webhooks.",
+                placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg|threshold:20|ageHours:12",
+                onValidate: ({ value }) => {
+                    const webhookRegex = /^https:\/\/discord(?:app)?.com\/api\/webhooks\/\d+\//;
+                    if (value) {
+                        const configs = value.trim().split(/\n+/).filter(c => c.trim());
+                        for (const config of configs) {
+                            const parts = config.trim().split("|");
+                            const url = parts[0];
+                            if (!webhookRegex.test(url)) {
+                                return "Invalid webhook URL in configuration";
+                            }
+                            for (let i = 1; i < parts.length; i++) {
+                                const param = parts[i];
+                                if (!param.includes(":")) {
+                                    return "Invalid configuration format. Use: URL|threshold:NUMBER|ageHours:NUMBER";
+                                }
+                                const [key, val] = param.split(":");
+                                if (["threshold", "ageHours"].includes(key.trim())) {
+                                    if (isNaN(Number(val))) {
+                                        return `Invalid value for ${key}: must be a number`;
+                                    }
+                                } else {
+                                    return `Unknown parameter: ${key}`;
+                                }
                             }
                         }
                     }
