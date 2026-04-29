@@ -28,8 +28,8 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         return;
     }
 
-    const discordWebhookUrl = settings[AppSetting.DiscordWebhook] as string;
-    if (!discordWebhookUrl) {
+    const discordWebhookUrls = getDiscordWebhookUrls(settings[AppSetting.DiscordWebhook] as string);
+    if (discordWebhookUrls.length === 0) {
         console.log("Alerting: Webhook is not set up!");
         return;
     }
@@ -63,8 +63,9 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
 
     const subredditName = context.subredditName ?? await context.reddit.getCurrentSubredditName();
 
-    const alertMessageIdKey = "AlertMessageId";
-    let alertMessageId = await context.redis.get(alertMessageIdKey);
+    const alertMessageIdKey = "AlertMessageIds";
+    const alertMessageIdsStr = await context.redis.get(alertMessageIdKey);
+    const alertMessageIds = alertMessageIdsStr ? JSON.parse(alertMessageIdsStr) as Record<string, string> : {};
 
     const maxQueueLengthKey = "MaxQueueLengthObserved";
     const previousMaxQueueLengthStr = await context.redis.get(maxQueueLengthKey);
@@ -75,13 +76,23 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
     if (!shouldAlert) {
         console.log("Alerting: Conditions not met for alerting.");
         const [underAlertAction] = settings[AppSetting.UnderThresholdAction] as UnderThresholdAction[] | undefined ?? [UnderThresholdAction.None];
-        if (underAlertAction === UnderThresholdAction.DeleteMessage && alertMessageId) {
-            console.log("Alerting: Deleting alert message as queue is under threshold.");
-            await deleteWebhookMessage(discordWebhookUrl, alertMessageId);
-        } else if (underAlertAction === UnderThresholdAction.UpdateMessage && alertMessageId) {
-            console.log("Alerting: Updating alert message as queue is under threshold.");
+        if (underAlertAction === UnderThresholdAction.DeleteMessage) {
+            console.log("Alerting: Deleting alert messages as queue is under threshold.");
+            for (const webhookUrl of discordWebhookUrls) {
+                const messageId = alertMessageIds[webhookUrl];
+                if (messageId) {
+                    await deleteWebhookMessage(webhookUrl, messageId);
+                }
+            }
+        } else if (underAlertAction === UnderThresholdAction.UpdateMessage) {
+            console.log("Alerting: Updating alert messages as queue is under threshold.");
             const message = `✅ The [modqueue](<https://www.reddit.com/r/${subredditName}/about/modqueue>) on /r/${subredditName} is now under the alerting thresholds. There ${pluralize("are", modQueue.length)} currently ${modQueue.length} ${pluralize("item", modQueue.length)} in the queue, and the maximum queue length seen was ${previousMaxQueueLength}.`;
-            await updateWebhookMessage(discordWebhookUrl, alertMessageId, message);
+            for (const webhookUrl of discordWebhookUrls) {
+                const messageId = alertMessageIds[webhookUrl];
+                if (messageId) {
+                    await updateWebhookMessage(webhookUrl, messageId, message);
+                }
+            }
         }
 
         await context.redis.del(alertMessageIdKey, maxQueueLengthKey);
@@ -139,17 +150,33 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         }
     }
 
-    if (alertMessageId) {
-        await updateWebhookMessage(discordWebhookUrl, alertMessageId, message);
-        console.log("Alerting: Updated existing alert message.");
-        return;
+    const hasExistingMessage = Object.keys(alertMessageIds).length > 0;
+    if (hasExistingMessage) {
+        for (const webhookUrl of discordWebhookUrls) {
+            const messageId = alertMessageIds[webhookUrl];
+            if (messageId) {
+                await updateWebhookMessage(webhookUrl, messageId, message);
+            } else {
+                const newMessageId = await sendMessageToWebhook(webhookUrl, message);
+                if (newMessageId) {
+                    alertMessageIds[webhookUrl] = newMessageId;
+                }
+            }
+        }
+        console.log("Alerting: Updated existing alert messages.");
+    } else {
+        for (const webhookUrl of discordWebhookUrls) {
+            const newMessageId = await sendMessageToWebhook(webhookUrl, message);
+            if (newMessageId) {
+                alertMessageIds[webhookUrl] = newMessageId;
+            }
+        }
+        console.log("Alerting: Sent new alert messages.");
     }
 
-    alertMessageId = await sendMessageToWebhook(discordWebhookUrl, message);
-
     // Record that we're in an alerting period with an expiry of a day
-    if (alertMessageId) {
-        await context.redis.set(alertMessageIdKey, alertMessageId, { expiration: addDays(new Date(), 1) });
+    if (Object.keys(alertMessageIds).length > 0) {
+        await context.redis.set(alertMessageIdKey, JSON.stringify(alertMessageIds), { expiration: addDays(new Date(), 1) });
     }
 }
 
@@ -217,4 +244,15 @@ async function deleteWebhookMessage (webhookUrl: string, messageId: string): Pro
     } catch (error) {
         console.error("Error deleting message to webhook:", error);
     }
+}
+
+function getDiscordWebhookUrls (webhookSetting: string | undefined): string[] {
+    if (!webhookSetting) {
+        return [];
+    }
+    return webhookSetting
+        .trim()
+        .split(/\n+/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
 }

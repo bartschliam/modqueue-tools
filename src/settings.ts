@@ -66,13 +66,18 @@ export const appSettings: SettingsFormField[] = [
             {
                 name: AppSetting.DiscordWebhook,
                 type: "string",
-                label: "Discord webhook URL",
-                helpText: "The URL of the Discord webhook to send alerts to. Get this from your Discord server's settings or channel settings.",
+                label: "Discord webhook URLs",
+                helpText: "One or more Discord webhook URLs to send alerts to. Enter multiple URLs separated by newlines. Get these from your Discord server's or channel settings.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
                 onValidate: ({ value }) => {
                     const webhookRegex = /^https:\/\/discord(?:app)?.com\/api\/webhooks\/\d+\//;
-                    if (value && !webhookRegex.test(value)) {
-                        return "Please enter a valid Discord webhook URL";
+                    if (value) {
+                        const urls = value.trim().split(/\n+/).filter(url => url.trim());
+                        for (const url of urls) {
+                            if (!webhookRegex.test(url.trim())) {
+                                return "Please enter valid Discord webhook URLs";
+                            }
+                        }
                     }
                 },
             },
