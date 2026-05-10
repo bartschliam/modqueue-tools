@@ -2,7 +2,7 @@ import { TriggerContext, WikiPage, WikiPagePermissionLevel } from "@devvit/publi
 import { formatDurationToNow } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
-import { ActionDelay, AggregatedSample, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
+import { ActionDelay, QueueLength, actionDelayRedisItemToObject, aggregateObjectToActionDelay, aggregateObjectToQueueLength, average, queueLengthRedisItemToObject } from "./typesAndConversion.js";
 import { max, min, sum } from "lodash";
 import json2md from "json2md";
 
@@ -82,9 +82,9 @@ export async function refreshWikiPage (context: TriggerContext) {
             const actionDelaysForDay = actionDelays.filter(item => isSameDay(item.dateTime, day));
 
             if (queueLengthsForDay.length) {
-                const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample))));
+                const averageQueueLength = Math.round(average(queueLengthsForDay.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples }))));
                 const peakQueueLength = queueLengthsForDay.sort((a, b) => b.queueLength - a.queueLength)[0];
-                const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample))));
+                const averageActionDelay = Math.round(average(actionDelaysForDay.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples }))));
                 const maximumActionDelay = max(actionDelaysForDay.map(item => item.maxActionDelayInSeconds)) ?? 0;
                 const modActions = sum(actionDelaysForDay.map(item => item.numSamples));
 
@@ -110,7 +110,7 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const bullets: string[] = [];
     if (queueLengths.length > 0) {
-        bullets.push(`Average queue length: ${Math.round(average(queueLengths.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample))))}`);
+        bullets.push(`Average queue length: ${Math.round(average(queueLengths.map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples }))))}`);
         const peakQueueLength = queueLengths.sort((a, b) => b.queueLength - a.queueLength)[0];
         bullets.push(`Peak queue length: ${Math.round(peakQueueLength.queueLength)} at ${peakQueueLength.dateTime.toUTCString()}`);
     } else {
@@ -118,7 +118,7 @@ export async function refreshWikiPage (context: TriggerContext) {
     }
 
     if (actionDelays.length > 0) {
-        const samples = actionDelays.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
+        const samples = actionDelays.map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples }));
         const maximum = max(actionDelays.map(item => item.maxActionDelayInSeconds)) ?? 0;
         bullets.push(`Mod actions: ${sum(actionDelays.map(item => item.numSamples))} (excludes AutoModerator and Reddit actions)`);
         if (earliestTimeRecorded) {
@@ -140,14 +140,14 @@ export async function refreshWikiPage (context: TriggerContext) {
 
     const maxBar = max([...queueLengths.filter(x => x.dateTime > summaryStart).map(x => x.maxQueueLength), ...actionDelays.filter(x => x.dateTime > summaryStart).map(x => x.numSamples)]) ?? 0;
     for (let hour = 0; hour < 24; hour++) {
-        const queueSizeSamples = queueLengths.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples } as AggregatedSample));
-        const actionCountSamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.numSamples, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
+        const queueSizeSamples = queueLengths.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.queueLength, maxValue: item.queueLength, numSamples: item.numSamples }));
+        const actionCountSamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.numSamples, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples }));
         if (actionCountSamples.length < queueSizeSamples.length) {
             for (let x = 0; x < queueSizeSamples.length - actionCountSamples.length; x++) {
                 actionCountSamples.push({ maxValue: 0, meanValue: 0, numSamples: average(actionCountSamples) });
             }
         }
-        const actionDelaySamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples } as AggregatedSample));
+        const actionDelaySamples = actionDelays.filter(x => x.dateTime >= summaryStart && getHours(x.dateTime) === hour).map(item => ({ meanValue: item.actionDelayInSeconds, maxValue: item.actionDelayInSeconds, numSamples: item.numSamples }));
         timeRows.push([
             hour.toString(),
             `${numberToBlocks(average(queueSizeSamples), maxBar)} ${cappedNumber(Math.round(average(queueSizeSamples)))}`,

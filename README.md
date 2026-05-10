@@ -25,15 +25,19 @@ You can also configure a percentage threshold for when an individual post will s
 
 ![Example Screenshot](https://raw.githubusercontent.com/fsvreddit/modqueue-tools/main/doc_images/ModqueueAlert.png)
 
-A guide on how to set up a webhook can be found [here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
+[A guide on how to set up a webhook can be found here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
 
 ## Source Code and Licence
 
-This app is open source. You can find it on GitHub [here](https://github.com/fsvreddit/modqueue-tools).
+This app is open source. [You can find it on GitHub here](https://github.com/fsvreddit/modqueue-tools).
 
 ## Version History
 
-### v1.3 (coming soon)
+### v1.3.2
+
+* Mitigate against duplicate actions if the Developer Platform is having issues
+
+### v1.3
 
 * Discord messages now stay updated with new queue lengths while the queue is over the threshold
 * New option to allow the alert message to be deleted or updated when the queue is under the threshold (disabled by default to match previous behaviour)

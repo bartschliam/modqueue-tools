@@ -48,8 +48,8 @@ export async function onAppInstall (event: AppInstall, context: TriggerContext) 
     await onAppInstallOrUpgrade(event, context);
 
     await context.scheduler.runJob({
-        name: "onInstall",
-        runAt: new Date(),
+        name: ScheduledJob.AppInstall,
+        runAt: addSeconds(new Date(), 10),
     });
 }
 
@@ -64,12 +64,11 @@ export async function onAppInstallJobHandler (_: unknown, context: JobContext) {
     const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy ?? item.removedByCategory)) as Post[];
     const queuedComments = modqueue.filter(item => item instanceof Comment && item.numReports === 0) as Comment[];
 
-    const filteredItems = [
-        ...queuedPosts.map(item => ({ itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } as QueuedItemProperties)),
-        ...queuedComments.map(item => ({ itemId: item.id, postId: item.postId, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } as QueuedItemProperties)),
+    const filteredItems: QueuedItemProperties[] = [
+        ...queuedPosts.map(item => ({ itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } satisfies QueuedItemProperties)),
+        ...queuedComments.map(item => ({ itemId: item.id, postId: item.postId, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } satisfies QueuedItemProperties)),
     ];
 
-    for (const item of filteredItems) {
-        await context.redis.hSet(FILTERED_ITEM_KEY, { [item.itemId]: JSON.stringify(item) });
-    }
+    const objectToStore = Object.fromEntries(filteredItems.map(item => [item.itemId, JSON.stringify(item)]));
+    await context.redis.hSet(FILTERED_ITEM_KEY, objectToStore);
 }
