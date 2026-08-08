@@ -60,5 +60,6 @@ jobs:
               --title "Upstream sync has conflicts - manual resolution needed" \
               --body "The weekly upstream sync could not merge cleanly. This branch contains conflict markers - resolve them and merge manually." \
               --base main \
-              --head "$branch"
+              --head "$branch" \
+              --assignee bartschliam
           fi
