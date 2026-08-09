@@ -21,7 +21,7 @@ interface WebhookThresholds {
 function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
     const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
     const countedPosts = countBy(postIdList);
-    const postsInQueue = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] } as QueuedPostCount));
+    const postsInQueue: QueuedPostCount[] = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] }));
 
     return postsInQueue.filter(item => Math.round(100 * item.count / modQueue.length) >= threshold).sort((a, b) => b.count - a.count);
 }
