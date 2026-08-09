@@ -66,7 +66,7 @@ export const appSettings: SettingsFormField[] = [
             },
             {
                 name: AppSetting.DiscordWebhook,
-                type: "string",
+                type: "paragraph",
                 label: "Discord webhook URLs",
                 helpText: "One or more Discord webhook URLs to send alerts to. Enter multiple URLs separated by newlines. Get these from your Discord server's or channel settings.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
@@ -84,7 +84,7 @@ export const appSettings: SettingsFormField[] = [
             },
             {
                 name: AppSetting.DiscordWebhookConfig,
-                type: "string",
+                type: "paragraph",
                 label: "Per-webhook thresholds (optional)",
                 helpText: "Set different thresholds for specific webhooks. Format: one per line as 'WEBHOOK_URL|threshold:NUMBER|ageHours:NUMBER'. Leave blank to use default thresholds for all webhooks.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg|threshold:20|ageHours:12",
