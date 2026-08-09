@@ -1,4 +1,4 @@
-import { TriggerContext, WikiPage, WikiPagePermissionLevel } from "@devvit/public-api";
+import { TriggerContext, WikiPage } from "@devvit/public-api";
 import { formatDurationToNow } from "./utility.js";
 import { ACTION_DELAY_KEY, ACTION_DELAY_KEY_HOURLY, QUEUE_LENGTH_KEY, QUEUE_LENGTH_KEY_HOURLY } from "./redisHelper.js";
 import { compareDesc, differenceInHours, eachDayOfInterval, getHours, isSameDay, subDays, subSeconds } from "date-fns";
@@ -184,7 +184,8 @@ export async function refreshWikiPage (context: TriggerContext) {
             subredditName,
             page: wikiPageName,
             listed: true,
-            permLevel: WikiPagePermissionLevel.MODS_ONLY,
+            // MODS_ONLY: WikiPagePermissionLevel is a type-only export as of @devvit/reddit 0.13.x; its underlying value is stable at 2.
+            permLevel: 2,
         });
     }
 }

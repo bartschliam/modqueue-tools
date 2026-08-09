@@ -1,10 +1,20 @@
-import { Comment, JobContext, Post, TriggerContext } from "@devvit/public-api";
+import { JobContext, TriggerContext } from "@devvit/public-api";
+import type { Comment, Post } from "@devvit/reddit";
 import { AppInstall, AppUpgrade } from "@devvit/protos";
 import { QueuedItemProperties } from "./handleActions.js";
 import { FILTERED_ITEM_KEY } from "./redisHelper.js";
 import { addSeconds } from "date-fns";
 import { ScheduledJob } from "./constants.js";
 import pluralize from "pluralize";
+import { isCommentId, isLinkId } from "@devvit/public-api/types/tid.js";
+
+function isPost (item: Post | Comment): item is Post {
+    return isLinkId(item.id);
+}
+
+function isComment (item: Post | Comment): item is Comment {
+    return isCommentId(item.id);
+}
 
 export async function onAppInstallOrUpgrade (_: AppInstall | AppUpgrade, context: TriggerContext) {
     const currentJobs = await context.scheduler.listJobs();
@@ -61,8 +71,8 @@ export async function onAppInstallJobHandler (_: unknown, context: JobContext) {
     }).all();
 
     // Filter down to posts or comments that are filtered
-    const queuedPosts = modqueue.filter(item => item instanceof Post && (item.removedBy ?? item.removedByCategory)) as Post[];
-    const queuedComments = modqueue.filter(item => item instanceof Comment && item.numReports === 0) as Comment[];
+    const queuedPosts = modqueue.filter(item => isPost(item) && (item.removedBy ?? item.removedByCategory)) as Post[];
+    const queuedComments = modqueue.filter(item => isComment(item) && item.numReports === 0) as Comment[];
 
     const filteredItems: QueuedItemProperties[] = [
         ...queuedPosts.map(item => ({ itemId: item.id, postId: item.id, reasonForQueue: "AutoModerator", queueDate: item.createdAt.getTime() } satisfies QueuedItemProperties)),

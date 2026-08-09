@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "modqueue-tools",
+  "name": "modqueue-tools-plus",
   "blocks": {
     "entry": "src/main.ts",
     "triggers": [
@@ -12,6 +12,6 @@
     ]
   },
   "dev": {
-    "subreddit": "fsvsandbox"
+    "subreddit": "clashtest"
   }
 }

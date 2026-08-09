@@ -1,4 +1,5 @@
-import { Comment, Post, TriggerContext } from "@devvit/public-api";
+import { TriggerContext } from "@devvit/public-api";
+import type { Comment, Post } from "@devvit/reddit";
 import { AppSetting, UnderThresholdAction } from "./settings.js";
 import { addDays, addMinutes, subHours } from "date-fns";
 import { formatDurationToNow } from "./utility.js";
@@ -6,7 +7,7 @@ import pluralize from "pluralize";
 import { QueuedItemProperties } from "./handleActions.js";
 import markdownEscape from "markdown-escape";
 import { countBy } from "lodash";
-import { isLinkId } from "@devvit/public-api/types/tid.js";
+import { isCommentId, isLinkId } from "@devvit/public-api/types/tid.js";
 
 interface QueuedPostCount {
     postId: string;
@@ -18,8 +19,12 @@ interface WebhookThresholds {
     ageHours?: number;
 }
 
+function isComment (item: Post | Comment): item is Comment {
+    return isCommentId(item.id);
+}
+
 function getTopPosts (modQueue: (Post | Comment)[], threshold: number): QueuedPostCount[] {
-    const postIdList = modQueue.map(item => item instanceof Comment ? item.postId : item.id);
+    const postIdList = modQueue.map(item => isComment(item) ? item.postId : item.id);
     const countedPosts = countBy(postIdList);
     const postsInQueue: QueuedPostCount[] = Object.keys(countedPosts).map(postId => ({ postId, count: countedPosts[postId] }));
 
