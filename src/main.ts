@@ -8,6 +8,16 @@ import { ScheduledJob } from "./constants.js";
 Devvit.addSettings(appSettings);
 
 Devvit.addTrigger({
+    event: "AppInstall",
+    onEvent: onAppInstall,
+});
+
+Devvit.addTrigger({
+    event: "AppUpgrade",
+    onEvent: onAppInstallOrUpgrade,
+});
+
+Devvit.addTrigger({
     event: "ModAction",
     onEvent: handleModAction,
 });
@@ -38,18 +48,8 @@ Devvit.addSchedulerJob({
 });
 
 Devvit.addSchedulerJob({
-    name: "onInstall",
+    name: ScheduledJob.AppInstall,
     onRun: onAppInstallJobHandler,
-});
-
-Devvit.addTrigger({
-    event: "AppUpgrade",
-    onEvent: onAppInstallOrUpgrade,
-});
-
-Devvit.addTrigger({
-    event: "AppInstall",
-    onEvent: onAppInstall,
 });
 
 Devvit.configure({

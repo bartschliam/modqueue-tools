@@ -1,34 +1,40 @@
 import { TriggerContext } from "@devvit/public-api";
 import { ModAction, PostReport, CommentReport } from "@devvit/protos";
-import { differenceInSeconds, subSeconds } from "date-fns";
+import { addMinutes, differenceInSeconds, subSeconds } from "date-fns";
 import { FILTERED_ITEM_KEY, recordActionDelay } from "./redisHelper.js";
 import { formatDurationToNow } from "./utility.js";
+import { T1ID, T3ID } from "@devvit/public-api/types/tid.js";
+import { hasTriggerBeenHandled } from "@fsvreddit/fsv-devvit-helpers";
 
 export interface QueuedItemProperties {
-    postId: string;
-    itemId: string;
+    postId: T3ID;
+    itemId: T1ID | T3ID;
     reasonForQueue: "AutoModerator" | "reddit" | "report";
     queueDate: number;
 }
 
-function getItemIdFromModAction (event: ModAction): string {
+function getItemIdFromModAction (event: ModAction): T1ID | T3ID {
     if (event.targetComment?.id) {
-        return event.targetComment.id;
+        return event.targetComment.id as T1ID;
     } else if (event.targetPost?.id) {
-        return event.targetPost.id;
+        return event.targetPost.id as T3ID;
     } else {
         throw new Error("Unexpected mod action type");
     }
 }
 
-function getPostIdFromModAction (event: ModAction): string {
+function getPostIdFromModAction (event: ModAction): T3ID {
     if (event.targetComment?.id) {
-        return event.targetComment.postId;
+        return event.targetComment.postId as T3ID;
     } else if (event.targetPost?.id) {
-        return event.targetPost.id;
+        return event.targetPost.id as T3ID;
     } else {
         throw new Error("Unexpected mod action type");
     }
+}
+
+async function hasModActionBeenHandled (event: ModAction, context: TriggerContext): Promise<boolean> {
+    return await hasTriggerBeenHandled(context.redis, `modAction:${event.action}:${event.moderator?.name}:${event.actionedAt?.getTime()}`, { expiration: addMinutes(new Date(), 10) });
 }
 
 export async function handleModAction (event: ModAction, context: TriggerContext) {
@@ -37,6 +43,11 @@ export async function handleModAction (event: ModAction, context: TriggerContext
     }
 
     if (event.action === "approvelink" || event.action === "approvecomment") {
+        if (await hasModActionBeenHandled(event, context)) {
+            console.log(`Mod action ${event.id} has already been handled, skipping.`);
+            return;
+        }
+
         const itemId = getItemIdFromModAction(event);
         const existingValue = await context.redis.hGet(FILTERED_ITEM_KEY, itemId);
         if (existingValue) {
@@ -51,6 +62,11 @@ export async function handleModAction (event: ModAction, context: TriggerContext
     }
 
     if (event.action === "removelink" || event.action === "removecomment" || event.action === "spamlink" || event.action === "spamcomment") {
+        if (await hasModActionBeenHandled(event, context)) {
+            console.log(`Mod action ${event.id} has already been handled, skipping.`);
+            return;
+        }
+
         const itemId = getItemIdFromModAction(event);
         const postId = getPostIdFromModAction(event);
 
@@ -84,7 +100,7 @@ export async function handleModAction (event: ModAction, context: TriggerContext
     }
 }
 
-async function handleReport (itemId: string, postId: string, context: TriggerContext) {
+async function handleReport (itemId: T1ID | T3ID, postId: T3ID, context: TriggerContext) {
     const existingValue = await context.redis.hGet(FILTERED_ITEM_KEY, itemId);
     if (!existingValue) {
         const props: QueuedItemProperties = {
@@ -104,12 +120,24 @@ export async function handlePostReport (event: PostReport, context: TriggerConte
     if (!event.post) {
         return;
     }
-    await handleReport(event.post.id, event.post.id, context);
+
+    if (await hasTriggerBeenHandled(context.redis, `postReport:${event.post.id}:${event.reason}`, { expiration: addMinutes(new Date(), 1) })) {
+        console.log(`Post report ${event.post.id} has already been handled, skipping.`);
+        return;
+    }
+
+    await handleReport(event.post.id as T3ID, event.post.id as T3ID, context);
 }
 
 export async function handleCommentReport (event: CommentReport, context: TriggerContext) {
     if (!event.comment) {
         return;
     }
-    await handleReport(event.comment.id, event.comment.postId, context);
+
+    if (await hasTriggerBeenHandled(context.redis, `commentReport:${event.comment.id}:${event.reason}`, { expiration: addMinutes(new Date(), 1) })) {
+        console.log(`Comment report ${event.comment.id} has already been handled, skipping.`);
+        return;
+    }
+
+    await handleReport(event.comment.id as T1ID, event.comment.postId as T3ID, context);
 }
