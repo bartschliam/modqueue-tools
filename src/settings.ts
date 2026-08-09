@@ -68,7 +68,7 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.DiscordWebhook,
                 type: "paragraph",
                 label: "Discord webhook URLs",
-                helpText: "One or more Discord webhook URLs to send alerts to. Enter multiple URLs separated by newlines. Get these from your Discord server's or channel settings.",
+                helpText: "One or more Discord webhook URLs to send alerts to, one per line. Get these from your Discord server's or channel settings. The line number of each URL here corresponds to the same line number in the per-webhook thresholds field below.",
                 placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg",
                 onValidate: ({ value }) => {
                     const webhookRegex = /^https:\/\/discord(?:app)?.com\/api\/webhooks\/\d+\//;
@@ -86,22 +86,18 @@ export const appSettings: SettingsFormField[] = [
                 name: AppSetting.DiscordWebhookConfig,
                 type: "paragraph",
                 label: "Per-webhook thresholds (optional)",
-                helpText: "Set different thresholds for specific webhooks. Format: one per line as 'WEBHOOK_URL|threshold:NUMBER|ageHours:NUMBER'. Leave blank to use default thresholds for all webhooks.",
-                placeholder: "https://discord.com/api/webhooks/123456789012345678/abcdefg|threshold:20|ageHours:12",
+                helpText: "Override the default thresholds for specific webhooks. Each line here matches the webhook on the same line number in the field above (line 1 configures the first webhook, line 2 the second, and so on). Leave a line blank to use the default thresholds for that webhook. Format: 'threshold:NUMBER|ageHours:NUMBER'.",
+                placeholder: "threshold:20|ageHours:12",
                 onValidate: ({ value }) => {
-                    const webhookRegex = /^https:\/\/discord(?:app)?.com\/api\/webhooks\/\d+\//;
                     if (value) {
-                        const configs = value.trim().split(/\n+/).filter(c => c.trim());
-                        for (const config of configs) {
-                            const parts = config.trim().split("|");
-                            const url = parts[0];
-                            if (!webhookRegex.test(url)) {
-                                return "Invalid webhook URL in configuration";
+                        const lines = value.split(/\r?\n/).map(line => line.trim());
+                        for (const line of lines) {
+                            if (!line) {
+                                continue;
                             }
-                            for (let i = 1; i < parts.length; i++) {
-                                const param = parts[i];
+                            for (const param of line.split("|")) {
                                 if (!param.includes(":")) {
-                                    return "Invalid configuration format. Use: URL|threshold:NUMBER|ageHours:NUMBER";
+                                    return "Invalid configuration format. Use: threshold:NUMBER|ageHours:NUMBER";
                                 }
                                 const [key, val] = param.split(":");
                                 if (["threshold", "ageHours"].includes(key.trim())) {

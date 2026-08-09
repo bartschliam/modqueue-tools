@@ -86,6 +86,8 @@ export async function checkAlerting (modQueue: (Post | Comment)[], queueItemProp
         const alertThreshold = thresholds.threshold ?? globalAlertThreshold;
         const alertAgeHours = thresholds.ageHours ?? globalAlertAgeHours;
 
+        console.log(`Alerting: Webhook ${webhookUrl} resolved to threshold ${alertThreshold} and ageHours ${alertAgeHours}`);
+
         let shouldAlertForThisWebhook = false;
 
         if (alertThreshold && modQueue.length >= alertThreshold) {
@@ -310,18 +312,15 @@ function parseWebhookConfig (
         return result;
     }
 
-    const configs = configSetting
-        .trim()
-        .split(/\n+/)
-        .filter(c => c.trim());
+    // Each line here corresponds by position to the same line number in the webhook URL list.
+    const configLines = configSetting.split(/\r?\n/).map(line => line.trim());
+    console.log(`Alerting: Parsed ${configLines.length} threshold config line(s) for ${webhookUrls.length} webhook(s): ${JSON.stringify(configLines)}`);
 
-    for (const config of configs) {
-        const parts = config.trim().split("|");
-        const url = parts[0].trim();
-
-        if (!webhookUrls.includes(url)) {
-            console.log(`Alerting: Webhook URL in config not found in main list: ${url}`);
-            continue;
+    webhookUrls.forEach((url, index) => {
+        const line = configLines[index];
+        if (!line) {
+            console.log(`Alerting: No threshold override for webhook at line ${index + 1}, using defaults.`);
+            return;
         }
 
         const thresholds: WebhookThresholds = {
@@ -329,8 +328,8 @@ function parseWebhookConfig (
             ageHours: defaultAgeHours,
         };
 
-        for (let i = 1; i < parts.length; i++) {
-            const [key, value] = parts[i].split(":").map(s => s.trim());
+        for (const param of line.split("|")) {
+            const [key, value] = param.split(":").map(s => s.trim());
             if (key === "threshold") {
                 thresholds.threshold = parseInt(value, 10);
             } else if (key === "ageHours") {
@@ -339,7 +338,7 @@ function parseWebhookConfig (
         }
 
         result[url] = thresholds;
-    }
+    });
 
     return result;
 }
