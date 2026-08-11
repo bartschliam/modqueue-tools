@@ -1,5 +1,11 @@
 Provides analytics and alerting for mod queues.
 
+## About this app
+
+modqueue-tools-plus is a community-maintained fork of [modqueue-tools](https://developers.reddit.com/apps/modqueue-tools) by u/fsvreddit. It builds on that project's analytics and alerting features and adds support for sending alerts to **multiple Discord webhooks**, each with its own optional thresholds. This fork was created after the corresponding pull request to the original project had gone unmerged for an extended period.
+
+All credit for the original design and implementation goes to fsvreddit; this fork is offered under the same [BSD-3-Clause license](LICENSE) and is not affiliated with or endorsed by the original author.
+
 ## Analytics
 
 This app updates a wiki page (modqueue-tools/queuestats) on your subreddit once a day with statistics on queue lengths and queue action times for the last 24 hours and for the last 3 months (or the app install date, whichever is later).
@@ -23,15 +29,25 @@ The app checks the queue every 5 minutes and will send a message if needed. But 
 
 You can also configure a percentage threshold for when an individual post will show in the alert.
 
-![Example Screenshot](https://raw.githubusercontent.com/fsvreddit/modqueue-tools/main/doc_images/ModqueueAlert.png)
+![Example Screenshot](https://raw.githubusercontent.com/bartschliam/modqueue-tools/main/doc_images/ModqueueAlert.png)
 
 [A guide on how to set up a webhook can be found here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
 
+### Multiple webhooks
+
+Unlike the original modqueue-tools app, modqueue-tools-plus lets you send alerts to more than one Discord webhook. Enter one webhook URL per line in the "Discord webhook URLs" setting.
+
+By default, every webhook uses the queue size and item age thresholds configured above. If you want a specific webhook to use different thresholds (for example, a channel that should only be notified for a much larger backlog), add a matching line in the "Per-webhook thresholds" setting, using the format `threshold:NUMBER|ageHours:NUMBER`. The line number in that field corresponds to the same line number in the webhook URL field; leave a line blank to keep the default thresholds for that webhook.
+
 ## Source Code and Licence
 
-This app is open source. [You can find it on GitHub here](https://github.com/fsvreddit/modqueue-tools).
+This app is open source, forked from [modqueue-tools](https://github.com/fsvreddit/modqueue-tools) by fsvreddit. [You can find this fork on GitHub here](https://github.com/bartschliam/modqueue-tools). Both projects are distributed under the [BSD-3-Clause licence](LICENSE).
 
 ## Version History
+
+### v1.4.0 (modqueue-tools-plus)
+
+* Added support for multiple Discord webhooks, each with optional per-webhook thresholds
 
 ### v1.3.2
 
